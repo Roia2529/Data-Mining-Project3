@@ -38,22 +38,35 @@ public class cluster{
 		}
 	};
 	
-	class kmeans_Info{
+	class Cluster_Info{
 		private Set<Integer> centers;
 		private double distance;
-		kmeans_Info(){}
-		kmeans_Info(Set<Integer> c,double d)
+		private Map<Integer, Set<Integer>> t;
+		Cluster_Info(){}
+		Cluster_Info(Set<Integer> c,double d)
 		{
 			this.centers = c;
 			this.distance=d;
 		}
-		double getkmeansCost()
+		
+		//set 
+		void setClusters(final Map<Integer, Set<Integer>> c)
+		{
+			 this.t= c;
+		}
+		
+		//get
+		double getMeansCost()
 		{
 			return this.distance;
 		}
 		Set<Integer> getCenters()
 		{
 			return this.centers;
+		}
+		Map<Integer, Set<Integer>> getCluster()
+		{
+			return this.t;
 		}
 		
 	};
@@ -207,6 +220,9 @@ public class cluster{
 			System.out.print(j+"cluster:");
 			System.out.println(t.get(j).toString());
 		}
+		this.ThreeCenterCost(t);
+		this.ThreeMeanCost(t);
+		
 		return t; 
 	}
 
@@ -416,7 +432,7 @@ public class cluster{
 			}
 			center_ls.add(newcenter);
 			unused_key.remove(newcenter);
-			System.out.println(local_d);
+			//System.out.println(local_d);
 		}
 		
 		for(Integer c:center_ls)
@@ -447,8 +463,8 @@ public class cluster{
 			System.out.print(j+" cluster:");
 			System.out.println(t.get(j).toString());
 		}
-		this.ThreeCenterCost(t);
-		this.ThreeMeanCost(t);
+		//this.ThreeCenterCost(t);
+		//this.ThreeMeanCost(t);
 		return t; 
 	}
 
@@ -486,22 +502,26 @@ public class cluster{
 	 * @param cluster results after clustering
 	 * @return void
 	 */
-	private double ThreeMeanCost(final Map<Integer, Set<Integer>> cluster)
+	private double ThreeMeanCost(final Map<Integer, Set<Integer>> cluster,final Map<Integer, ArrayList<Double>> center)
 	{
 		Double sum = 0.0;
 		Double amount = (double) this.input_data.keySet().size();
-		//System.out.println("num of data: " +amount);
-		for(Integer c:cluster.keySet())
+		if(!cluster.keySet().equals(center.keySet()))
+			System.out.println("Key Sets are not the same");
+		
+		
+		for(Integer c:center.keySet())
 		{
-			//sum = 0.0;
-			for(Integer s1_ele:cluster.get(c)) 
+			ArrayList<Double> center_cord = new ArrayList<Double>(center.get(c));
+			Set<Integer> members = new HashSet<Integer>(cluster.get(c));
+			for(Integer s1_ele:members) 
 			{	
-				Double tmp_d = EuclideanD(this.input_data.get(c), this.input_data.get(s1_ele));
+				Double tmp_d = EuclideanD(center_cord, this.input_data.get(s1_ele));
 				sum+=tmp_d * tmp_d;		
 			}
 		}
 		sum = Math.sqrt(sum/amount);
-		System.out.println("3-Mean cost of cluster: "+ sum);
+		System.out.println(cluster.keySet().size()+"-Mean cost of cluster: "+ sum);
 		return sum;
 	
 	}
@@ -514,7 +534,7 @@ public class cluster{
 	 * @return clusters result in Map
 	 * @throws Exception 
 	 */
-	public kmeans_Info kmeansplus(int num_center) throws Exception
+	public Cluster_Info kmeansplus(int num_center) throws Exception
 	{
 		Map<Integer, Set<Integer>> t = new HashMap<Integer, Set<Integer>>();
 		List<Integer> center_ls = new ArrayList<Integer>();	
@@ -571,7 +591,8 @@ public class cluster{
 			//System.out.print("cluster key:"+t.keySet());
 			//System.out.println(t.get(j).toString());
 		//}
-		kmeans_Info k = new kmeans_Info(t.keySet(),this.ThreeMeanCost(t));
+		Cluster_Info k = new Cluster_Info(t.keySet(),this.ThreeMeanCost(t));
+		k.setClusters(t);
 		
 		return k; 
 	}
@@ -584,26 +605,29 @@ public class cluster{
 	 * @return clusters result in Map
 	 * @throws Exception 
 	 */
-	public Map<Integer, Set<Integer>> Lloyds(Set<Integer> center) throws Exception
+	public Cluster_Info Lloyds(final Set<Integer> center) throws Exception
 	{
 		Map<Integer, Set<Integer>> t = new HashMap<Integer, Set<Integer>>();
 		Map<Integer, Set<Integer>> to_update = new HashMap<Integer, Set<Integer>>();	
 		Set<Integer> all_key = new HashSet<Integer>(this.input_data.keySet());
 		int k = center.size();
+		if(k==0)
+			return null;
 		Map<Integer, ArrayList<Double>> center_cord = new HashMap<Integer, ArrayList<Double>>();
 		
 		//initialize center
 		for(Integer c:center)
 		{
-			center_cord.put(c,this.data().get(c));
+			center_cord.put(c,this.input_data.get(c));
 			Set<Integer> init = new HashSet<Integer>();
 			init.add(c);
 			t.put(c, init);
 		}
 		
-		//boolean first_enter = true;
+		int counter = 0;
 		while(!t.equals(to_update))
 		{		
+			counter++;
 			to_update.clear();
 			//save previous result
 			for(Integer center_name:t.keySet())
@@ -628,59 +652,211 @@ public class cluster{
 			}
 			for(Integer c_index:t.keySet())
 			{
-				ArrayList<Double> Mean_cord = this.setMean(t.get(c_index), this.input_data);
+				ArrayList<Double> Mean_cord = new ArrayList<Double>(this.setMean(t.get(c_index), this.input_data));
+				if(Mean_cord.size()==0)
+				{
+					System.out.println("Set is Empty!");
+					t.remove(c_index);
+					center_cord.remove(c_index);
+					break;
+				}
+				else
 				center_cord.put(c_index, Mean_cord);
 			}
+			if(t.size()<k)
+				break;
 		}
 		
+		System.out.println("Takes "+counter+" runs to converge.");
+		/*
 		for(Integer j:t.keySet())
 		{
 			System.out.print("cluster name:"+j);
 			System.out.println(t.get(j).toString());
 		}
-		this.ThreeCenterCost(t);
-		this.ThreeMeanCost(t);
+		*/
+		//this.ThreeCenterCost(t);
+		//this.ThreeMeanCost(t);
+		Cluster_Info info = new Cluster_Info(t.keySet(),this.ThreeMeanCost(t,center_cord));
+		info.setClusters(t);
 		
-		return t;
+		return info;
 	}
 
-	public static void main(String[] args) throws Exception
+	/**
+	
+	 * Calculate k center cost by find maximal distance inside a cluster
+	 * Print center cost of each cluster 
+	 * @param cluster results after clustering
+	 * @return void
+	 */
+	private double ThreeMeanCost(final Map<Integer, Set<Integer>> cluster)
 	{
-		
+		Double sum = 0.0;
+		Double amount = (double) this.input_data.keySet().size();
+		//System.out.println("num of data: " +amount);
+		for(Integer c:cluster.keySet())
+		{
+			//sum = 0.0;
+			for(Integer s1_ele:cluster.get(c)) 
+			{	
+				Double tmp_d = EuclideanD(this.input_data.get(c), this.input_data.get(s1_ele));
+				sum+=tmp_d * tmp_d;		
+			}
+		}
+		sum = Math.sqrt(sum/amount);
+		System.out.println(cluster.keySet().size()+"-Mean cost of cluster: "+ sum);
+		return sum;
+	
+	}
+
+	public static void Q1() throws Exception
+	{
 		//Q1-A
-		/*
+	
 		cluster C1= new cluster("txt/C1.txt");
-		
+				
 		Map<Integer, Set<Integer>> C1_mean = C1.HierarchicalClustering(4, def_Link.Mean);
 		clusterPlot C1_chart3 = new clusterPlot("C1 Mean link", C1_mean,C1.data());
-		
+				
 		Map<Integer, Set<Integer>> C1_result = C1.HierarchicalClustering(4,def_Link.Single);
 		clusterPlot C1_chart1 = new clusterPlot("C1 single link", C1_result,C1.data());
-		
-	    Map<Integer, Set<Integer>> C1_com = C1.HierarchicalClustering(4, def_Link.Complete);
+				
+		Map<Integer, Set<Integer>> C1_com = C1.HierarchicalClustering(4, def_Link.Complete);
 		clusterPlot C1_chart2 = new clusterPlot("C1 complete link", C1_com,C1.data());
-		
+				
 		//C1_plot
 		C1_chart1.pack( );          
 		RefineryUtilities.centerFrameOnScreen( C1_chart1 );          
 		C1_chart1.setVisible( true );
 		C1_chart2.pack( );          
-	    RefineryUtilities.positionFrameRandomly( C1_chart2 );          
-	    C1_chart2.setVisible( true );
-	    C1_chart3.pack( );          
-	    RefineryUtilities.positionFrameRandomly( C1_chart3 );          
-	    C1_chart3.setVisible( true );
-	    */
+		RefineryUtilities.positionFrameRandomly( C1_chart2 );          
+		C1_chart2.setVisible( true );
+		C1_chart3.pack( );          
+		RefineryUtilities.positionFrameRandomly( C1_chart3 );          
+		C1_chart3.setVisible( true );	
+	}
+
+	public static void Q3() throws Exception
+	{
+		//Q3
+			int dim = 4;
+		System.out.println("d="+dim+": "+HighDimension(dim));
+		List<ArrayList<Double>> factor_c = new ArrayList<ArrayList<Double>>();
+		for(int i=2;i<=20;i+=2)
+		{
+			ArrayList<Double> co = new ArrayList<Double>();
+			co.add((double)i);
+			co.add(HighDimension(i));
+			factor_c.add(co);
+		}
+		XY_LinePlot Q3_chart_K = new XY_LinePlot("High-dimensional Distance",
+			"factor d vs c","d","c", factor_c);
+				
+		Q3_chart_K.pack( );          
+		RefineryUtilities.centerFrameOnScreen( Q3_chart_K );          
+		Q3_chart_K.setVisible( true );		
+	}
+
+	/**	
+	 * Calculate factor c
+	 * @param end_num
+	 * @return clusters result in Map
+	 * @throws Exception 
+	 */
+	public static Double HighDimension(int d)
+	{
+		if(d%2!=0) return 0.0; //not even number
+		Double c = 0.0;
+		Double div_pi_sqrt=2/Math.sqrt(Math.PI);
 		
+		c = div_pi_sqrt*Math.pow(factorial(d/2), 1/(double)d);
+				
+		return c;
+	}
+	
+	public static int factorial(int f)
+	{
+		int c = 1;
+		for(int i=2;i<=f;i++)
+		{
+			c= c*i;
+		}
+				
+		return c;
+	}
+	public static void Q2_CDF() throws Exception
+	{
+		cluster C2= new cluster("txt/C2.txt");
+		System.out.println("Load file done");
+		Set<Integer> KM_center = new HashSet<Integer>();
+		List<ArrayList<Double>> xydata = new ArrayList<ArrayList<Double>>();
+		ArrayList<Double> sort_cost = new ArrayList<Double>();
+		int count = 0;
+		double equal =0;
+		double trials = 2000;
+		while(count<trials)
+		{
+			System.out.println("kmeans result");
+			Cluster_Info C2_KM= C2.kmeansplus(3);
+			KM_center.addAll(C2_KM.getCenters());
+			
+			System.out.println("Lloyds result");
+			Cluster_Info C2_Ll = C2.Lloyds(KM_center);
+			Map<Integer, Set<Integer>> C2_Lloyds_KM = C2_Ll.getCluster();
+			sort_cost.add(C2_Ll.getMeansCost());
+			if(C2_KM.getCluster().equals(C2_Lloyds_KM))
+			{
+				equal++;
+				System.out.println("kmeans Cluster");
+				for(Integer j:C2_KM.getCenters())
+				{
+					System.out.print("cluster name:"+j);
+					System.out.println(C2_KM.getCluster().get(j).toString());
+				}
+				
+				System.out.println("Lloyds Cluster");
+				for(Integer j:C2_Ll.getCenters())
+				{
+					System.out.print("cluster name:"+j);
+					System.out.println(C2_Ll.getCluster().get(j).toString());
+				}
+			}
+			count++;
+			KM_center.clear();
+			System.out.println(" ");
+		}
+		Collections.sort(sort_cost);
 		
+		for(int i=1;i<=sort_cost.size();i++)
+		{
+			ArrayList<Double> co = new ArrayList<Double>();
+			co.add(sort_cost.get(i-1));
+			co.add(i/trials);
+			xydata.add(co);
+		}
+		System.out.println("Subsets are the same: "+ equal);
+		System.out.println("Fraction: "+ equal/trials);
+		XY_LinePlot C2_chart03 = new XY_LinePlot("CDF",
+				"C2 Lloyds use K-mean++ Result","cost","CDF(cost)", xydata);
+		
+		C2_chart03.pack( );          
+		RefineryUtilities.centerFrameOnScreen( C2_chart03 );          
+		C2_chart03.setVisible( true );
+		
+	}
+	
+	public static void main(String[] args) throws Exception
+	{
 		
 	    cluster C2= new cluster("txt/C2.txt");
 		System.out.println("Load file done");
-		/*
-		//Q2-A-Gonzalez
-		Map<Integer, Set<Integer>> C2_Gon = C2.Gonzalez(3);
-		clusterPlot C2_chart_Gon = new clusterPlot("C2 Gonzalez", C2_Gon,C2.data(), false);
 		
+		//Q2-A-Gonzalez
+		/*
+		Map<Integer, Set<Integer>> C2_Gon = C2.Gonzalez(3);
+		
+		clusterPlot C2_chart_Gon = new clusterPlot("C2 Gonzalez", C2_Gon,C2.data(), false);
 		C2_chart_Gon.pack( );          
 		RefineryUtilities.centerFrameOnScreen( C2_chart_Gon );          
 		C2_chart_Gon.setVisible( true );
@@ -725,16 +901,35 @@ public class cluster{
 	    ChartUtilities.saveChartAsPNG( BarChart , C1_chart.ScatterChart() , width , height );
 	    */
 		
-		//Q2-B
 		
+		//Q2-B
+		//1
 		Set<Integer> Lloyds_center = new HashSet<Integer>();
+		/*	
 		Lloyds_center.add(1);Lloyds_center.add(2);Lloyds_center.add(3);
-		Map<Integer, Set<Integer>> C2_Lloyds = C2.Lloyds(Lloyds_center);
+		Map<Integer, Set<Integer>> C2_Lloyds = C2.Lloyds(Lloyds_center).getCluster();
 		clusterPlot C2_chart_Lloyds = new clusterPlot("C2 Lloyds with C{1,2,3}", C2_Lloyds, C2.data(), false);
 		
 		C2_chart_Lloyds.pack( );          
 		RefineryUtilities.centerFrameOnScreen( C2_chart_Lloyds );          
 		C2_chart_Lloyds.setVisible( true );
+		
+		//2
+		Lloyds_center.clear();
+		//Lloyds_center.addAll(C2_Gon.keySet());
+		Lloyds_center.add(1);
+		Lloyds_center.add(949);
+		Lloyds_center.add(1004);
+		Map<Integer, Set<Integer>> C2_Lloyds_G = C2.Lloyds(Lloyds_center).getCluster();
+		
+		clusterPlot C2_chart_Lloyds_G = new clusterPlot("C2 Lloyds with C{1, 949, 1004}", C2_Lloyds_G, C2.data(), false);
+		C2_chart_Lloyds_G.pack( );          
+		RefineryUtilities.centerFrameOnScreen( C2_chart_Lloyds_G );          
+		C2_chart_Lloyds_G.setVisible( true );
+		*/
+		
+		
+		//Q4
 		
 
 	}

@@ -31,6 +31,40 @@ public class XY_LinePlot extends ApplicationFrame{
 	 * @param xydata
 	 * @throws Exception 
 	 */
+	public XY_LinePlot(String title, String description, String x_v, String y_v, final List<ArrayList<Double>> xydata) throws Exception
+	{
+		 super(title);
+		 
+		 if(xydata.get(0).size()!=2)
+			 throw new Exception("Cant plot on XY plane");
+		 
+		 XYSeriesCollection seriesdata = new XYSeriesCollection();
+		 XYSeries elmt_cord=new XYSeriesLabel("xydata");
+		 for(ArrayList<Double> point:xydata)
+		 {
+			elmt_cord.add(point.get(0),point.get(1));
+		 }
+		 seriesdata.addSeries(elmt_cord);
+		 this.xyLineChart = ChartFactory.createXYLineChart(
+				 description ,
+				 x_v ,
+				 y_v ,
+		         seriesdata ,
+		         PlotOrientation.VERTICAL ,
+		         true , true , false);
+
+		 ChartPanel chartPanel = new ChartPanel( xyLineChart );
+		 chartPanel.setPreferredSize( new java.awt.Dimension( 640 , 480 ) );
+
+		 setContentPane( chartPanel ); 
+	}
+	
+	/**
+	 * Plot Scatter data on XY-plane, color of element represent which cluster it belongs to 
+	 * @param title 
+	 * @param xydata
+	 * @throws Exception 
+	 */
 	public XY_LinePlot(String title, final List<ArrayList<Double>> xydata) throws Exception
 	{
 		 super(title);
@@ -46,19 +80,19 @@ public class XY_LinePlot extends ApplicationFrame{
 		 }
 		 seriesdata.addSeries(elmt_cord);
 		 this.xyLineChart = ChartFactory.createXYLineChart(
-		         "Clustering" ,
+		         "CDF" ,
 		         "X" ,
 		         "Y" ,
 		         seriesdata ,
 		         PlotOrientation.VERTICAL ,
 		         true , true , false);
-
+	
 		 ChartPanel chartPanel = new ChartPanel( xyLineChart );
 		 chartPanel.setPreferredSize( new java.awt.Dimension( 640 , 480 ) );
-
+	
 		 setContentPane( chartPanel ); 
 	}
-	
+
 	public JFreeChart ScatterChart()
 	{
 		return this.xyLineChart;
