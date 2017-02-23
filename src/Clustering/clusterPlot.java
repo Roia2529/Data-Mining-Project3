@@ -5,10 +5,6 @@ import java.util.Map;
 import java.nio.charset.Charset;
 
 import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Set;
 
 import org.jfree.chart.ChartFactory;
@@ -72,6 +68,50 @@ public class clusterPlot extends ApplicationFrame{
 		 setContentPane( chartPanel ); 
 	}
 	
+	/**
+	 * Plot Scatter data on XY-plane, color of element represent which cluster it belongs to 
+	 * @param title
+	 * @param cluster
+	 * @param data
+	 */
+	public clusterPlot(String title, final Map<Integer, Set<Integer>> cluster, 
+			final Map<Integer, ArrayList<Double>> data, boolean label)
+	{
+		 super(title);
+		 XYSeriesCollection seriesdata = new XYSeriesCollection();
+	
+		 for(Integer i:cluster.keySet())
+		 {
+			 Set<Integer> set_elmt = cluster.get(i);
+			 XYSeries elmt_cord=new XYSeriesLabel(i);
+			 for(Integer elmt:set_elmt)
+			 {
+				 elmt_cord.add(data.get(elmt).get(0), data.get(elmt).get(1));
+				 ((XYSeriesLabel) elmt_cord).addLabel(data.get(elmt),elmt.toString());
+			 }
+			 seriesdata.addSeries(elmt_cord);
+		 }
+		 this.xyScatterChart = ChartFactory.createScatterPlot(
+		         "Clustering" ,
+		         "X" ,
+		         "Y" ,
+		         seriesdata ,
+		         PlotOrientation.VERTICAL ,
+		         true , true , false);
+		   
+		if(label)
+		{
+			XYPlot plot = (XYPlot)this.xyScatterChart.getPlot();
+			XYLineAndShapeRenderer renderer = (XYLineAndShapeRenderer) plot.getRenderer();
+			renderer.setBaseItemLabelsVisible(true);
+			renderer.setBaseItemLabelGenerator(new LegendXYItemLabelGenerator(plot.getLegendItems()));
+		}
+		 ChartPanel chartPanel = new ChartPanel( xyScatterChart );
+		 chartPanel.setPreferredSize( new java.awt.Dimension( 640 , 480 ) );
+	
+		 setContentPane( chartPanel ); 
+	}
+
 	public JFreeChart ScatterChart()
 	{
 		return this.xyScatterChart;
